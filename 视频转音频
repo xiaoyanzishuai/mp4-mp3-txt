@@ -1,4 +1,4 @@
-# mp4转mp3
+# 第一个mp4转mp3
 import os
 import ffmpy3
 from ffmpy3 import FFmpeg
@@ -22,4 +22,15 @@ for i in range(len(filename)):
     fpg.run()
 
 print("完成!!!")
+
+# 第二个mp4转mp3
+import subprocess
+
+def convert_mp4_to_mp3(input_file, output_file):
+    cmd = ['ffmpeg', '-i', input_file, '-vn', '-acodec', 'libmp3lame', '-qscale:a', '2', output_file]
+    subprocess.run(cmd)
+
+input_file = 'input.mp4'
+output_file = 'output.mp3'
+convert_mp4_to_mp3(input_file, output_file)
 
