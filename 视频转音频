@@ -1,0 +1,25 @@
+# mp4转mp3
+import os
+import ffmpy3
+from ffmpy3 import FFmpeg
+
+file_path = r'D:\PYCHARMTEST\pythonProject1'
+filename = os.listdir(file_path)
+out_file_path = r'D:\PYCHARMTEST\pythonProject1'
+out_filename = os.listdir(out_file_path)
+print("导出的文件:")
+print(out_filename)
+for i in range(len(filename)):
+    change_file = file_path+"/"+filename[i]
+    after_name = filename[i].replace("mp4","mp3")
+    out_put_file = out_file_path + "/" + after_name
+    if after_name in out_filename:
+        continue
+    print(after_name)
+    fpg = ffmpy3.FFmpeg("D:\ffmpeg-20",inputs={change_file:None},
+                 outputs={out_put_file: '-vn -ar 44100 -ac 2 -ac 2 -ab 192 -f mp3'})
+    print(fpg.cmd)
+    fpg.run()
+
+print("完成!!!")
+
