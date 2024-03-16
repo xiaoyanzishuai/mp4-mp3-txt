@@ -1,0 +1,118 @@
+
+# 提取视频文字的前奏
+
+ffmpeg -y -i "D:\PYCHARMTEST\pythonProject1\testout.mp4" -vn -codec copy "D:\PYCHARMTEST\pythonProject1\out.m4a"
+ffmpeg -i "D:\PYCHARMTEST\pythonProject1\out.m4a" -f segment -segment_time 55 -c copy "D:\PYCHARMTEST\pythonProject1\out.m4a"%03d.m4a
+
+
+# 提取视频中的音频 mp4 - m4a
+for %i in (*.mp4) do ffmpeg -i %i -vn -codec copy %i-out.m4a
+
+# 音频按时间分割 - m4a
+for %i in (*.m4a) do ffmpeg -i %i -f segment -segment_time 55 -c copy %i-%03d-.m4a
+
+# 批量转换音频格式为pcm(参数设置)
+for %i in (*-.m4a) do ffmpeg -i %i -acodec pcm_s16le -f s16le -ac 1 -ar 16000 %i-new.pcm
+
+# pcm转文字
+import os
+from aip import AipSpeech
+from mydocx import *
+from tqdm import tqdm
+
+class AudioToText:
+    ''' 利用 FFmpeg 提取视频中的语音并转换为文本文档'''
+    def __init__(self):
+        self.document = Document()
+        self.document.styles['Normal'].font.name = u'微软雅黑'
+        self.document.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), u'微软雅黑')
+
+        """ 你的 APPID AK SK """
+        APP_ID = '*'
+        API_KEY = '*'
+        SECRET_KEY = '*'
+        self.client = AipSpeech(APP_ID, API_KEY, SECRET_KEY)
+
+    def get_path_files(self, path, type='.pcm'):
+        '''
+        获取目录下所有的 pcm文件
+        :param path: 目录地址
+        :param type: 文件类型
+        :return: 包含文件路径的列表
+        '''
+        files = os.listdir(path)
+        new = []
+        for i in files:
+            name, ty = os.path.splitext(i)
+            if ty == type:
+                pathFile = os.path.join(path,i)
+                new.append(pathFile)
+        return new
+
+    def get_file_content(self, filePath):
+        '''
+        文件读取 content
+        :param filePath: 文件包含路径
+        :return:content
+        '''
+        with open(filePath, 'rb') as fp:
+            return fp.read()
+
+    def read_pcm(self, filename):
+        '''
+        识别pcm语音文件 转文字
+        :param filename: 文件名称
+        :return: 识别结果
+        '''
+        result = self.client.asr(self.get_file_content(filename), 'pcm', 16000, {'dev_pid': 1537,})
+        # baidu-api没想到这么脆弱！
+        try:
+            if result['err_msg'] == 'success.':
+                word = result['result'][0] + "\n\n"
+            else:
+                word = str(result['err_no']) + str(result['err_msg']) + "\n\n"
+        except:
+            word = str(result) + "\n\n"
+        # print(word)
+        return word,result['err_no']
+
+    def GoWalkPath(self, path):
+        '''
+        获取所有文件夹的地址
+        '''
+        videoPathList = []
+        for f_path, dir_name, f_names in os.walk(path):
+            if  f_path != path:
+                videoPathList.append(f_path)
+                # print(f_path)
+        return videoPathList
+
+    def main(self, path):
+        '''
+        运行语音转文字并保持word文档
+        '''
+        pathList = self.GoWalkPath(path)
+        if len(pathList) > 0:
+            for _path in pathList:
+                files = self.get_path_files(_path)
+                for i in tqdm(range(0, len(files))):
+                    wd,err = self.read_pcm(files[i])
+                    if err ==0:
+                        totle_level(self.document, files[i])
+                        body(self.document, wd )
+                    else:
+                        body(self.document, wd, True)
+                try:
+                    name = _path.split('\\')[-1]
+                    _filePath = os.path.join(_path, name)
+                    saveFile(self.document, _filePath)
+                except Exception as e:
+                    print(e)
+        else:
+            print("目录下无文件夹")
+
+if __name__ == '__main__':
+    # pcm 音频路径
+    path = "video"
+    t = AudioToText()
+    t.main(path)
